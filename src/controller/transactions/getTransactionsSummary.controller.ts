@@ -5,6 +5,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import prisma from "../../config/prisma";
 import type { GetTransactionsSummaryQuery } from "../../schemas/transaction.schema";
 import type { CategorySummary } from "../../types/category.types";
+import type { TransactionSummary } from "../../types/transaction.types";
 
 dayjs.extend(utc);
 
@@ -66,9 +67,19 @@ export const getTransactionsSummary = async (
 			}
 		}
 
-		console.log(groupedExpenses, totalExpenses, totalIncomes);
+		const summary: TransactionSummary = {
+			totalExpenses,
+			totalIncomes,
+			balance: Number((totalIncomes - totalExpenses).toFixed(2)),
+			expensesByCategory: Array.from(groupedExpenses.values())
+				.map((entry) => ({
+					...entry,
+					percentage: Number.parseFloat(((entry.amount / totalExpenses) * 100).toFixed(2)),
+				}))
+				.sort((a, b) => b.amount - a.amount),
+		};
 
-		reply.send(transactions);
+		reply.send(summary);
 	} catch (err) {
 		request.log.error("Erro ao trazer transações", err);
 		reply.status(500).send({ error: "Erro do servidor" });
